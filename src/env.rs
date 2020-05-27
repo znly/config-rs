@@ -1,4 +1,5 @@
 use error::*;
+use regex::Regex;
 use source::Source;
 use std::collections::HashMap;
 use std::env;
@@ -77,10 +78,7 @@ impl Source for Environment {
         };
 
         // Define a prefix pattern to test and exclude from keys
-        let prefix_pattern = match self.prefix {
-            Some(ref prefix) => Some(prefix.clone() + "_"),
-            _ => None,
-        };
+        let prefix_pattern = self.prefix.as_ref().map(|prefix| prefix.clone() + "_");
 
         for (key, value) in env::vars() {
             // Treat empty environment variables as unset
@@ -109,10 +107,29 @@ impl Source for Environment {
                 key = key.replace(separator, ".");
             }
 
-            m.insert(
-                key.to_lowercase(),
-                Value::new(Some(&uri), ValueKind::String(value)),
-            );
+            // Support for hashmap in environment variables like `export MY_HASHMAP="mykey1=myvalue1;mykey2=myvalue2"`
+            let hashmap_reg = Regex::new(r#"(?P<key>[^=]+)=(?P<value>[^;]*);?"#).unwrap();
+            if hashmap_reg.is_match(&value) {
+                let mut map: HashMap<String, Value> = HashMap::new();
+                for caps in hashmap_reg.captures_iter(&value) {
+                    map.insert(
+                        caps.name("key").unwrap().as_str().into(),
+                        Value::new(
+                            Some(&uri),
+                            ValueKind::String(caps.name("value").unwrap().as_str().into()),
+                        ),
+                    );
+                }
+                m.insert(
+                    key.to_lowercase(),
+                    Value::new(Some(&uri), ValueKind::Table(map)),
+                );
+            } else {
+                m.insert(
+                    key.to_lowercase(),
+                    Value::new(Some(&uri), ValueKind::String(value)),
+                );
+            }
         }
 
         Ok(m)

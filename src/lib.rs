@@ -51,6 +51,8 @@ extern crate serde_hjson;
 #[cfg(feature = "ini")]
 extern crate ini;
 
+extern crate regex;
+
 mod config;
 mod de;
 mod env;
