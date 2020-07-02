@@ -109,19 +109,31 @@ impl Source for Environment {
 
             // Support for hashmap in environment variables like `export MY_HASHMAP="mykey1=myvalue1;mykey2=myvalue2"`
             let hashmap_reg = Regex::new(r#"(?P<key>[^=]+)=(?P<value>[^;]*);?"#).unwrap();
-            if hashmap_reg.is_match(&value) {
+            if value.starts_with('{') && value.ends_with('}') && hashmap_reg.is_match(&value) {
                 let mut map: HashMap<String, Value> = HashMap::new();
                 for caps in hashmap_reg.captures_iter(&value) {
                     map.insert(
-                        caps.name("key").unwrap().as_str().into(),
+                        caps.name("key")
+                            .unwrap()
+                            .as_str()
+                            .trim_matches(['{', '}'].as_ref())
+                            .to_string(),
                         Value::new(
                             Some(&uri),
-                            ValueKind::String(caps.name("value").unwrap().as_str().into()),
+                            ValueKind::String(
+                                caps.name("value")
+                                    .unwrap()
+                                    .as_str()
+                                    .trim_matches(['{', '}'].as_ref())
+                                    .to_string(),
+                            ),
                         ),
                     );
                 }
                 m.insert(
-                    key.to_lowercase(),
+                    key.to_lowercase()
+                        .trim_matches(['{', '}'].as_ref())
+                        .to_string(),
                     Value::new(Some(&uri), ValueKind::Table(map)),
                 );
             } else {

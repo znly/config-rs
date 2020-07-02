@@ -71,3 +71,25 @@ fn test_empty_value_is_ignored() {
 
     env::remove_var("C_A_B");
 }
+
+#[test]
+fn test_hashmap() {
+    env::set_var("MY_HASHMAP", "{a=1;b=2}");
+    env::set_var("MY_STRING", "hello=there!");
+
+    let environment = Environment::new();
+    let got = environment.collect().unwrap();
+
+    assert!(got.contains_key("my_hashmap"));
+    assert!(got.contains_key("my_string"));
+
+    let hm = got.get("my_hashmap").unwrap().clone().into_table().unwrap();
+    assert_eq!("1", hm.get("a").unwrap().to_string());
+    assert_eq!("2", hm.get("b").unwrap().to_string());
+
+    let s = got.get("my_string").unwrap().clone().into_str().unwrap();
+    assert_eq!("hello=there!", s);
+
+    env::remove_var("MY_HASHMAP");
+    env::remove_var("MY_STRING");
+}
