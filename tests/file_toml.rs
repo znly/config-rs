@@ -85,9 +85,6 @@ fn test_error_parse() {
     assert!(res.is_err());
     assert_eq!(
         res.unwrap_err().to_string(),
-        format!(
-            "failed to parse datetime for key `error` at line 2 column 9 in {}",
-            path_with_extension.display()
-        )
+        "invalid TOML value, did you mean to use a quoted string? at line 2 column 9 in tests/Settings-invalid.toml".to_string()
     );
 }

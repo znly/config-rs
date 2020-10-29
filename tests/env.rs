@@ -93,3 +93,25 @@ fn test_hashmap() {
     env::remove_var("MY_HASHMAP");
     env::remove_var("MY_STRING");
 }
+
+#[test]
+fn test_array() {
+    env::set_var("MY_ARRAY", "hello,there");
+    env::set_var("MY_STRING", "hello=there!");
+
+    let environment = Environment::new();
+    let got = environment.collect().unwrap();
+
+    assert!(got.contains_key("my_array"));
+    assert!(got.contains_key("my_string"));
+
+    let array = got.get("my_array").unwrap().clone().into_array().unwrap();
+    assert_eq!("hello", array.get(0).unwrap().to_string());
+    assert_eq!("there", array.get(1).unwrap().to_string());
+
+    let s = got.get("my_string").unwrap().clone().into_str().unwrap();
+    assert_eq!("hello=there!", s);
+
+    env::remove_var("MY_ARRAY");
+    env::remove_var("MY_STRING");
+}

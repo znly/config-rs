@@ -107,26 +107,18 @@ impl Source for Environment {
                 key = key.replace(separator, ".");
             }
 
-            // Support for hashmap in environment variables like `export MY_HASHMAP="mykey1=myvalue1;mykey2=myvalue2"`
+            // Support for hashmap in environment variables like `export MY_HASHMAP="{mykey1=myvalue1;mykey2=myvalue2}"`
             let hashmap_reg = Regex::new(r#"(?P<key>[^=]+)=(?P<value>[^;]*);?"#).unwrap();
+            let array_reg = Regex::new(r#"(?P<elt>[^;]*);?"#).unwrap();
             if value.starts_with('{') && value.ends_with('}') && hashmap_reg.is_match(&value) {
+                let value = value.trim_matches(['{', '}'].as_ref());
                 let mut map: HashMap<String, Value> = HashMap::new();
                 for caps in hashmap_reg.captures_iter(&value) {
                     map.insert(
-                        caps.name("key")
-                            .unwrap()
-                            .as_str()
-                            .trim_matches(['{', '}'].as_ref())
-                            .to_string(),
+                        caps.name("key").unwrap().as_str().to_string(),
                         Value::new(
                             Some(&uri),
-                            ValueKind::String(
-                                caps.name("value")
-                                    .unwrap()
-                                    .as_str()
-                                    .trim_matches(['{', '}'].as_ref())
-                                    .to_string(),
-                            ),
+                            ValueKind::String(caps.name("value").unwrap().as_str().to_string()),
                         ),
                     );
                 }
@@ -135,6 +127,17 @@ impl Source for Environment {
                         .trim_matches(['{', '}'].as_ref())
                         .to_string(),
                     Value::new(Some(&uri), ValueKind::Table(map)),
+                );
+            // Support for hashmap in environment variables like `export MY_ARRAY="myvalue1,myvalue2"`
+            } else if value.contains(',') {
+                let value = value.trim_matches(['[', ']'].as_ref());
+                let elements: Vec<Value> = value
+                    .split(',')
+                    .map(|elt| Value::new(Some(&uri), ValueKind::String(elt.to_string())))
+                    .collect();
+                m.insert(
+                    key.to_lowercase(),
+                    Value::new(Some(&uri), ValueKind::Array(elements)),
                 );
             } else {
                 m.insert(
